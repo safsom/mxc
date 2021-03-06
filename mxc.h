@@ -62,13 +62,6 @@ int vec_append_char(vector_t *vec, char x) {
     return vec_append(vec, &x);
 }
 
-int vec_append_short(vector_t *vec, short x) {
-    if (vec->type != sizeof(short)){
-        return -1;
-    }
-    return vec_append(vec, &x);
-}
-
 int vec_append_int(vector_t *vec, int x) {
     if (vec->type != sizeof(int)) {
         return -1;
@@ -93,13 +86,6 @@ int vec_insert(vector_t *vec, size_t index, void *v) {
 
 int vec_insert_char(vector_t *vec, size_t index, char x) {
     if (vec->type != sizeof(char)) {
-        return -1;
-    } 
-    return vec_insert(vec, index, &x);
-}
-
-short vec_insert_short(vector_t *vec, size_t index, short x) {
-    if (vec->type != sizeof(short)) {
         return -1;
     } 
     return vec_insert(vec, index, &x);
@@ -132,18 +118,6 @@ int vec_replace_char(vector_t *vec, char x, char y) {
     }
     for (int i = 0; i < vec->index; i++) {
         if (*((char *)(vec->data + i)) == x) {
-            vec_replace(vec, i, &y);
-        }
-    }
-    return 0;
-}
-
-int vec_replace_short(vector_t *vec, short x, short y) {
-    if (vec->type != sizeof(short)) {
-        return -1;
-    }
-    for (int i = 0; i < vec->index; i++) {
-        if (*((short *)(vec->data + (i * vec->type))) == x) {
             vec_replace(vec, i, &y);
         }
     }
@@ -183,18 +157,6 @@ int vec_del_char(vector_t *vec, char x) {
     }
     for (int i = 0; i < vec->index; i++) {
         if (*((char *)(vec->data + i)) == x) {
-            vec_del_index(vec, i);
-        }
-    }
-    return 0;
-}
-
-int vec_del_short(vector_t *vec, short x) {
-    if (vec->type != sizeof(short)) {
-        return -1;
-    }
-    for (int i = 0; i < vec->index; i++) {
-        if (*((short *)(vec->data + (i * vec->type))) == x) {
             vec_del_index(vec, i);
         }
     }
@@ -461,6 +423,121 @@ static inline char *cstr(string_t *str) {
 
 void str_free(string_t *str) {
     vec_free(str);
+}
+
+/* Stack implementation */
+typedef struct {
+    size_t len;
+    size_t type;
+    void *data;
+} stack_t;
+
+stack_t *stack_init(size_t type) {
+    stack_t *stack = malloc(sizeof(stack_t));
+    if (stack == NULL) {
+        return NULL;
+    }
+    stack->data = malloc(type);
+    if (stack->data == NULL) {
+        return NULL;
+    }
+    stack->type = type;
+    stack->len = 1;
+    return stack;
+}
+
+int stack_push(stack_t *stack, void *v) {
+    void *tmp = realloc(stack->data, stack->type * (stack->len + 1));
+    if (tmp == NULL) {
+        return -1;
+    }
+    stack->data = tmp;
+    if (memmove(stack->data + stack->type, stack->data, (stack->len * stack->type)) == NULL) {
+        return -1;
+    }
+    if (memcpy(stack->data, v, stack->type) == NULL) {
+        return -1;
+    }
+    stack->len += 1;
+    return 0;
+}
+
+char stack_pushchar(stack_t *stack, char x) {
+    void *tmp = realloc(stack->data, stack->type * (stack->len + 1));
+    if (tmp == NULL) {
+        return -1;
+    }
+    stack->data = tmp;
+    if (memmove(stack->data + stack->type, stack->data, (stack->len * stack->type)) == NULL) {
+        return -1;
+    }
+    *((char *)stack->data) = x;
+    stack->len += 1;
+    return 0;
+}
+
+
+int stack_pushint(stack_t *stack, int x) {
+    void *tmp = realloc(stack->data, stack->type * (stack->len + 1));
+    if (tmp == NULL) {
+        return -1;
+    }
+    stack->data = tmp;
+    if (memmove(stack->data + stack->type, stack->data, (stack->len * stack->type)) == NULL) {
+        return -1;
+    }
+    *((int *)stack->data) = x;
+    stack->len += 1;
+    return 0;
+}
+
+
+int stack_popchar(stack_t *stack) {
+    char x = *((char *)stack->data);
+    void *tmp = realloc(stack->data, stack->type * (stack->len - 1));
+    if (tmp == NULL) {
+        return -1;
+    }
+    stack->data = tmp;
+    if (memmove(stack->data, stack->data + stack->type, stack->type * (stack->len - 1)) == NULL) {
+        return -1;
+    }
+    stack->len -= 1;
+    return x;
+}
+
+int stack_popint(stack_t *stack) {
+    int x = *((int *)stack->data);
+    void *tmp = realloc(stack->data, stack->type * (stack->len - 1));
+    if (tmp == NULL) {
+        return -1;
+    }
+    stack->data = tmp;
+    if (memmove(stack->data, stack->data + stack->type, stack->type * (stack->len - 1)) == NULL) {
+        return -1;
+    }
+    stack->len -= 1;
+    return x;
+}
+
+void *stack_pop(stack_t *stack) {
+    void *v =  malloc(sizeof(stack->type));
+    if (v == NULL) {
+        return NULL;
+    }
+    memcpy(v, stack->data, stack->type);
+    void *tmp = realloc(stack->data, stack->type * (stack->len - 1));
+    stack->data = tmp;
+    if (memmove(stack->data, stack->data + stack->type, stack->type * (stack->len - 1)) == NULL) {
+        return NULL;
+    }
+    stack->len -= 1;
+    return v;
+}
+
+void stack_free(stack_t *stack) {
+    free(stack->data);
+    free(stack);
 }
 
 #endif

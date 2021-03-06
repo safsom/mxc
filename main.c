@@ -1,10 +1,16 @@
 #include "mxc.h"
 
 int main(int argc, char *argv[]) {
-    string_t *str = str_init("Safal Aryal");
-    
-    puts(cstr(str));
+    char name[5] = "safal";
+    stack_t *reversed = stack_init(sizeof(char));
 
-    str_free(str);
+    for (int i = 0; i < 5; i++) {
+        stack_pushchar(reversed, name[i]);
+    }
+    for (int i = 0; i < 5; i++) {
+        printf("%c", stack_popchar(reversed));
+    }
+
+    stack_free(reversed);
     return 0;
 }
