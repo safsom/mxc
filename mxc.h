@@ -37,6 +37,15 @@ void *vec_at(vector_t *vec, size_t index) {
     return (vec->data + (index * vec->type));
 }
 
+int vec_find(vector_t *vec, void *x) {
+    for (int i = 0; i < vec->index; i++) {
+        if (memcmp(vec->data + (i * vec->type), x, vec->type) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 int vec_append(vector_t *vec, void *v) {
     if (vec->index != vec->len) {
         memcpy(vec->data + (vec->index * vec->type), v, vec->type);
@@ -538,6 +547,110 @@ void *stack_pop(stack_t *stack) {
 void stack_free(stack_t *stack) {
     free(stack->data);
     free(stack);
+}
+
+/* Map implementation - includes structures for defining pairs */
+
+typedef struct {
+    int key;
+    void *value;
+} pair_t;
+
+typedef struct {
+   size_t type;
+   vector_t *pairs;
+} map_t;
+
+map_t *map_init(size_t type) {
+    map_t *map = malloc(sizeof(map_t));
+    if (map == NULL) {
+        return NULL;
+    }
+    vector_t *pairs = vec_init(sizeof(pair_t), 1);
+    if (pairs == NULL) {
+        return NULL;
+    }
+    map->pairs = pairs;
+    map->type = type;
+    return map;
+}
+
+int map_genkey(char *str) {
+    int ret = 0;
+    for (int i = 0; i < strlen(str); i++) {
+        ret += str[i];
+        ret = ret << 1;
+    }
+    return ret;
+}
+
+void *map_at(map_t *map, int key) {
+    for (int i = 0; i < vec_len(map->pairs); i++) {
+        if (((pair_t *)vec_at(map->pairs, i))->key == key) {
+            return ((pair_t *)vec_at(map->pairs, i))->value;
+        }
+    }
+    return NULL;
+}
+
+void *map_at_s(map_t *map, char *key) {
+    return map_at(map, map_genkey(key));
+}
+
+int map_insert(map_t *map, int key, void *value) {
+    for (int i = 0; i < vec_len(map->pairs); i++) {
+        if (((pair_t *)vec_at(map->pairs, i))->key == key) {
+            return -1;
+        }
+    }
+    pair_t p;
+    p.key = key;
+    p.value = malloc(map->type);
+    if (p.value == NULL) {
+        return -1;
+    }
+    memcpy(p.value, value, map->type);
+    return vec_append(map->pairs, &p);
+}
+
+int map_insert_s(map_t *map, char *key, void *value) {
+    return map_insert(map, map_genkey(key), value);
+}
+
+int map_replace(map_t *map, int key, void *value) {
+    for (int i = 0; i < vec_len(map->pairs); i++) {
+        pair_t *curr = (pair_t *)vec_at(map->pairs, i);
+        memcpy(curr->value, value, map->type);
+        return 0;        
+    }
+    return -1;
+}
+
+int map_replace_s(map_t *map, char *key, void *value) {
+    return map_replace(map, map_genkey(key), value);
+}
+
+int map_del(map_t *map, int key) {
+    for (int i = 0; i < vec_len(map->pairs); i++) {
+        if (((pair_t *)vec_at(map->pairs, i))->key == key) {
+            free(((pair_t *)vec_at(map->pairs, i))->value);
+            return vec_del_index(map->pairs, i);
+        }
+    }
+    return -1;
+}
+
+int map_del_s(map_t *map, char *key) {
+    return map_del(map, map_genkey(key));
+}
+
+void map_free(map_t *map) {
+    for (int i = 0; i < vec_len(map->pairs); i++) {
+        pair_t *p = vec_at(map->pairs, i);
+        free(p->value);
+    }
+    /* TODO: fix memory leak */
+    free(map);
 }
 
 #endif
