@@ -1,7 +1,7 @@
 #include "mxc.h"
 
 int main(int argc, char *argv[]) {
-    string_t *input = str_init("tom: 80, somil: 90");
+    string_t *input = str_init("tom: 80, hanks: 90");
     int slice;
 
     stack_t *reversed = stack_init(sizeof(char));
