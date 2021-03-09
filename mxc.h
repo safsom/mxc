@@ -634,6 +634,7 @@ int map_del(map_t *map, int key) {
     for (int i = 0; i < vec_len(map->pairs); i++) {
         if (((pair_t *)vec_at(map->pairs, i))->key == key) {
             free(((pair_t *)vec_at(map->pairs, i))->value);
+
             return vec_del_index(map->pairs, i);
         }
     }
