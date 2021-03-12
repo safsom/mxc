@@ -30,6 +30,18 @@ vector_t *vec_init(size_t type, size_t len) {
     return vec;
 }
 
+vector_t *vec_init_buf(void *data, size_t type, size_t len) {
+    vector_t *vec = malloc(sizeof(vector_t));
+    if (vec == NULL) {
+        return NULL;
+    }
+    vec->type = type;
+    vec->len = len;
+    vec->index = len;
+    vec->data = data;
+    return vec;
+}
+
 void *vec_at(vector_t *vec, size_t index) {
     if (index > vec->index) {
         return NULL;
@@ -209,7 +221,8 @@ void vec_clear(vector_t *vec) {
     vec->index = 0;
 }
 
-#define vec_len(x) x->index
+
+#define vec_length(x) x->index
 
 void vec_free(vector_t *vec) {
     free(vec->data);
@@ -228,6 +241,10 @@ string_t *str_init(char *str) {
     vec = vec_init(sizeof(char), len);
     vec_set(vec, str, len);
     return vec;
+}
+
+string_t *str_init_buf(char *buf) {
+    return vec_init_buf(buf, sizeof(char), strlen(buf));
 }
 
 int str_set_cstr(string_t *str, char *cstr) {
@@ -354,11 +371,18 @@ char str_at(string_t *str, size_t index) {
     return *((char *)vec_at(str, index));
 }
 
+int str_strip_ws(string_t *str) {
+    return vec_del_char(str, ' ');
+}
+
 int str_replace_index(string_t *str, size_t index, char x) {
     return vec_replace(str, index, &x);
 }
 
 int str_replace_char(string_t *str, char x, char y) {
+    if (x == ' ') {
+        return str_strip_ws(str);
+    }
     return vec_replace_char(str, x, y);
 }
 
@@ -415,8 +439,8 @@ int str_cmp(string_t *l, string_t *r) {
     return l->index - r->index;
 }
 
-const char *str_slice(string_t *str, size_t begin, size_t end) {
-    if (end > str->index) {
+const char *str_slice(string_t *str, size_t begin) {
+    if (begin > str->index) {
         return NULL;
     }
     return str->data + begin;
@@ -585,7 +609,7 @@ int map_genkey(char *str) {
 }
 
 void *map_at(map_t *map, int key) {
-    for (int i = 0; i < vec_len(map->pairs); i++) {
+    for (int i = 0; i < vec_length(map->pairs); i++) {
         if (((pair_t *)vec_at(map->pairs, i))->key == key) {
             return ((pair_t *)vec_at(map->pairs, i))->value;
         }
@@ -598,7 +622,7 @@ void *map_at_s(map_t *map, char *key) {
 }
 
 int map_insert(map_t *map, int key, void *value) {
-    for (int i = 0; i < vec_len(map->pairs); i++) {
+    for (int i = 0; i < vec_length(map->pairs); i++) {
         if (((pair_t *)vec_at(map->pairs, i))->key == key) {
             return -1;
         }
@@ -618,7 +642,7 @@ int map_insert_s(map_t *map, char *key, void *value) {
 }
 
 int map_replace(map_t *map, int key, void *value) {
-    for (int i = 0; i < vec_len(map->pairs); i++) {
+    for (int i = 0; i < vec_length(map->pairs); i++) {
         pair_t *curr = (pair_t *)vec_at(map->pairs, i);
         memcpy(curr->value, value, map->type);
         return 0;        
@@ -631,7 +655,7 @@ int map_replace_s(map_t *map, char *key, void *value) {
 }
 
 int map_del(map_t *map, int key) {
-    for (int i = 0; i < vec_len(map->pairs); i++) {
+    for (int i = 0; i < vec_length(map->pairs); i++) {
         if (((pair_t *)vec_at(map->pairs, i))->key == key) {
             free(((pair_t *)vec_at(map->pairs, i))->value);
 
@@ -646,12 +670,129 @@ int map_del_s(map_t *map, char *key) {
 }
 
 void map_free(map_t *map) {
-    for (int i = 0; i < vec_len(map->pairs); i++) {
+    for (int i = 0; i < vec_length(map->pairs); i++) {
         pair_t *p = vec_at(map->pairs, i);
         free(p->value);
     }
     /* TODO: fix memory leak */
     free(map);
+}
+
+/* List implementation */
+typedef struct list_in {
+    size_t type;
+    void *data;
+    struct list_in *next;
+} list_t;
+
+list_t *list_init(size_t type, void *initial) {
+    list_t *list = malloc(sizeof(list_t));
+    if (list == NULL) {
+        return NULL;
+    }
+    list->type = type;
+    list->data = malloc(type);
+    if (list->data == NULL) {
+        return NULL;
+    }
+    memcpy(list->data, initial, list->type);
+    list->next = NULL;
+    return list;
+}
+
+int list_append(list_t *list, void *x) {
+    while (list->next != NULL) {
+        list = list->next;
+    }
+    list->next = list_init(list->type, x);
+    return 0;
+}
+
+size_t list_length(list_t *list) {
+    size_t i = 0;
+    while (list != NULL) {
+        i++;
+        list = list->next;
+    }
+    return i;
+}
+
+int list_insert(list_t **list, size_t index, void *x) {
+    list_t *tmp = (*list);
+    list_t *new = list_init(tmp->type, x);
+    if (new == NULL) {
+        return -1;
+    } else if (index > list_length(tmp)) {
+        return -1;
+    }
+    if (index == 0) {    
+        new->next = tmp;
+        *(list) = new;
+        return 0;
+    }
+    for (int i = 0; i < (index - 1); i++) {
+        tmp = tmp->next;
+    }
+    if (tmp->next == NULL) {
+        return list_append(tmp, x);
+    }
+    list_t *tmp_n = tmp->next;
+    tmp->next = new;
+    new->next = tmp_n;
+    return 0;
+}
+
+int list_del_tail(list_t **list) {
+    list_t *tmp = (*list);
+    if (list_length(tmp) == 1) {
+        return -1;
+    }
+    while (tmp->next->next != NULL) {
+        tmp = tmp->next;
+    }
+    tmp->next = NULL;
+    return 0;
+}
+
+int list_del(list_t **list, size_t index) {
+    list_t *tmp = (*list);
+    if (index > list_length(tmp)) {
+        return -1;
+    }
+    for (int i = 0; i < index; i++) {
+        tmp = tmp->next;
+    }
+    memcpy(tmp, tmp->next, sizeof(list_t));
+    return 0;
+}
+
+int list_replace(list_t *list, size_t index, void *x) {
+    if (index > list_length(list)) {
+        return -1;
+    }
+    for (int i = 0; i < index; i++) {
+        list = list->next;
+    }
+    memcpy(list->data, x, list->type);
+    return 0;
+}
+
+void *list_at(list_t *list, size_t n) {
+    int i = 0;
+    while (list->next != NULL && i != n) {
+        list = list->next;
+        i++;
+    }
+    return list->data;
+}
+
+void list_free(list_t *list) {
+    while (list != NULL) {
+        void *dat = list->data;
+        free(dat);
+        free(list);
+        list = list->next;
+    }
 }
 
 #endif
