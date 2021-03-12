@@ -1,4 +1,4 @@
-#include "mxc.h"
+#include "../mxc.h"
 
 int main(int argc, char *argv[]) {
     int x = 4;

@@ -1,4 +1,4 @@
-#include "mxc.h"
+#include "../mxc.h"
 
 int main(int argc, char *argv[]) {
     string_t *input = str_init("tom: 80, hanks: 90");
